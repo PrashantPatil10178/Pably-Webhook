@@ -1,35 +1,47 @@
-import { Client, Users } from 'node-appwrite';
+import { Client, Databases } from 'node-appwrite';
 
-// This Appwrite function will be executed every time your function is triggered
 export default async ({ req, res, log, error }) => {
-  // You can use the Appwrite SDK to interact with other services
-  // For this example, we're using the Users service
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
     .setKey(req.headers['x-appwrite-key'] ?? '');
-  const users = new Users(client);
+
+  const databases = new Databases(client);
 
   try {
-    const response = await users.list();
-    // Log messages and errors to the Appwrite Console
-    // These logs won't be seen by your end users
-    log(`Total users: ${response.total}`);
-  } catch(err) {
-    error("Could not list users: " + err.message);
-  }
+    const { userId } = JSON.parse(req.bodyRaw || '{}');
 
-  // The req object contains the request data
-  if (req.path === "/ping") {
-    // Use res object to respond with text(), json(), or binary()
-    // Don't forget to return a response!
-    return res.text("Pong");
-  }
+    if (!userId) {
+      return res.json({ error: 'Missing userId in request body' });
+    }
 
-  return res.json({
-    motto: "Build like a team of hundreds_",
-    learn: "https://appwrite.io/docs",
-    connect: "https://appwrite.io/discord",
-    getInspired: "https://builtwith.appwrite.io",
-  });
+    const dbId = process.env.DB_ID;
+    const collectionId = 'users';
+
+    const userDoc = await databases.getDocument(dbId, collectionId, userId);
+
+    const data = {
+      email: userDoc.email,
+      phoneNo: userDoc.phoneNo,
+      District: userDoc.District,
+      Class: userDoc.Class,
+    };
+
+    const webhookRes = await fetch('', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!webhookRes.ok) {
+      throw new Error(`Webhook failed: ${webhookRes.statusText}`);
+    }
+
+    log(`Webhook sent successfully for user: ${userId}`);
+
+    return res.json({ success: true, userId });
+  } catch (err) {
+    error(`Error: ${err.message}`);
+    return res.json({ error: err.message });
+  }
 };
