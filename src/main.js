@@ -42,7 +42,7 @@ export default async ({ req, res, log, error }) => {
       email: userDoc.email,
       phoneNo: userDoc.phoneNo,
       District: userDoc.District,
-      Class: userDoc.Class,
+      Class: `Class ${userDoc.Class}`,
     };
 
     log('Sending data to Pabbly webhook using Axios...');
