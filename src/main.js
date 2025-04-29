@@ -16,7 +16,12 @@ export default async ({ req, res, log, error }) => {
     }
 
     const dbId = process.env.DB_ID;
-    const collectionId = 'users';
+    const collectionId = process.env.COLLECTION_ID;
+    if (!dbId || !collectionId) {
+      return res.json({
+        error: 'Missing database or collection ID in environment variables',
+      });
+    }
 
     const userDoc = await databases.getDocument(dbId, collectionId, userId);
 
@@ -27,7 +32,7 @@ export default async ({ req, res, log, error }) => {
       Class: userDoc.Class,
     };
 
-    const webhookRes = await fetch('', {
+    const webhookRes = await fetch(process.env.PABLY_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
