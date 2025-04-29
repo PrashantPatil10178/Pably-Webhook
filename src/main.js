@@ -1,4 +1,5 @@
 import { Client, Databases } from 'node-appwrite';
+import axios from 'axios';
 
 export default async ({ req, res, log, error }) => {
   const client = new Client()
@@ -37,27 +38,30 @@ export default async ({ req, res, log, error }) => {
     log(JSON.stringify(userDoc));
 
     const data = {
+      name: userDoc.name,
       email: userDoc.email,
       phoneNo: userDoc.phoneNo,
       District: userDoc.District,
       Class: userDoc.Class,
     };
 
-    log('Sending data to Pabbly webhook...');
-    const webhookRes = await fetch(process.env.PABLY_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+    log('Sending data to Pabbly webhook using Axios...');
+    const response = await axios.post(process.env.PABLY_WEBHOOK_URL, data, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
-    if (!webhookRes.ok) {
-      throw new Error(`Webhook failed: ${webhookRes.statusText}`);
-    }
+    log(`Pabbly response status: ${response.status}`);
+    log(`Pabbly response data: ${JSON.stringify(response.data)}`);
 
-    log(`Webhook sent successfully for user: ${userId}`);
     return res.json({ success: true, userId });
   } catch (err) {
     error(`Error: ${err.message}`);
+    if (err.response) {
+      error(`Response data: ${JSON.stringify(err.response.data)}`);
+      error(`Response status: ${err.response.status}`);
+    }
     return res.json({ error: err.message });
   }
 };
